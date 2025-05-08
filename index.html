@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Cadastro ASAAS</title>
+</head>
+<body>
+    <h2>Cadastro ASAAS + Parcelamento</h2>
+    {% if erro %}<p style="color:red">{{ erro }}</p>{% endif %}
+    {% if sucesso %}<p style="color:green">{{ sucesso }}</p>{% endif %}
+    <form method="POST">
+        Nome: <input type="text" name="nome"><br>
+        Email: <input type="email" name="email"><br>
+        CPF: <input type="text" name="cpf"><br>
+        Telefone: <input type="text" name="telefone"><br>
+        Valor por parcela: <input type="text" name="valor"><br>
+        <button type="submit">Cadastrar + Parcelar</button>
+    </form>
+    {% if links %}
+        <h3>Links das Parcelas</h3>
+        <ul>
+        {% for link in links %}
+            <li><a href="{{ link }}" target="_blank">{{ link }}</a></li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+</body>
+</html>
