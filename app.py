@@ -1,28 +1,24 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 import requests
 import datetime
+import os
 
 app = Flask(__name__)
-app.secret_key = 'chave_secreta'
 
 ASAAS_API_KEY = "$aact_hmlg_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OjI0MTYwODIzLTc4MjItNDRiNC05NWVmLTk1MjdiYzZiZWYyYzo6JGFhY2hfNGVkOTIzZDktMDBjMy00MjMzLTlkNmUtNGU1N2EyMjhmMmRh"
 ASAAS_BASE_URL = "https://sandbox.asaas.com/api/v3"
 
-@app.route("/", methods=["GET", "POST"])
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    links = []
-    if request.method == "POST":
-        nome = request.form.get("nome")
-        email = request.form.get("email")
-        cpf = request.form.get("cpf")
-        telefone = "55" + request.form.get("telefone")
-        valor = request.form.get("valor")
-        parcelas = int(request.form.get("parcelas"))
-        intervalo = int(request.form.get("intervalo"))
+    if request.method == 'POST':
+        nome = request.form['nome']
+        email = request.form['email']
+        cpf = request.form['cpf']
+        telefone = "55" + request.form['telefone']
+        valor = request.form['valor']
 
         if not nome or not email or not cpf or not telefone or not valor:
-            flash("Preencha todos os campos.", "warning")
-            return render_template("index.html")
+            return render_template('index.html', erro="Preencha todos os campos.")
 
         headers = {
             "accept": "application/json",
@@ -39,31 +35,33 @@ def index():
 
         cliente_resp = requests.post(f"{ASAAS_BASE_URL}/customers", headers=headers, json=cliente_data)
         if cliente_resp.status_code not in [200, 201]:
-            flash("Erro ao cadastrar cliente: " + cliente_resp.text, "danger")
-            return render_template("index.html")
+            return render_template('index.html', erro="Erro ao cadastrar cliente.")
 
         cliente_id = cliente_resp.json()['id']
-        hoje = datetime.datetime.now()
 
-        for i in range(parcelas):
-            vencimento = (hoje + datetime.timedelta(days=i*intervalo)).strftime("%Y-%m-%d")
+        hoje = datetime.datetime.now()
+        cobrancas = []
+        for i in range(10):
+            vencimento = (hoje + datetime.timedelta(days=i)).strftime("%Y-%m-%d")
             cobranca_data = {
                 "customer": cliente_id,
                 "billingType": "PIX",
                 "value": float(valor),
                 "dueDate": vencimento,
-                "description": f"Parcela {i+1}/{parcelas}"
+                "description": f"Parcela {i+1}/10"
             }
 
             resp = requests.post(f"{ASAAS_BASE_URL}/payments", headers=headers, json=cobranca_data)
             if resp.status_code in [200, 201]:
                 link = resp.json()['invoiceUrl']
-                links.append(link)
+                cobrancas.append(link)
             else:
-                flash(f"Erro na parcela {i+1}: {resp.text}", "danger")
-                return render_template("index.html")
+                return render_template('index.html', erro=f"Erro ao gerar parcela {i+1}.")
 
-        flash("Cobranças geradas com sucesso!", "success")
-        return render_template("index.html", links=links)
+        return render_template('index.html', sucesso="Cobranças criadas com sucesso!", links=cobrancas)
 
-    return render_template("index.html")
+    return render_template('index.html')
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
